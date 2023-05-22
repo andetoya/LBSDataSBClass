@@ -22,9 +22,8 @@ library(wbstats)
 library(skimr)
 library(countrycode)
 library(here)
+library (ggplot2)
 ```
-
-  
 
 # Data Visualisation - Exploration
 
@@ -81,8 +80,9 @@ shoot_per_year <- mass_shootings %>%
 #Create a table that counts the number of shootings per race 
 shoot_per_race <- mass_shootings %>%
   group_by(race)%>%
-  summarise(shootings = n()) %>%
+  summarise(shootings = n())
 
+#Create the bar chart in descendent order
 ggplot(shoot_per_race, aes(x = reorder(race, -shootings), y = shootings)) +
   geom_bar(stat = "identity", fill = "steelblue") +
   labs(x = "Race Category", y = "Number of Shooters") +
@@ -115,19 +115,78 @@ Address the following questions. Generate appropriate figures/tables to support 
 -   How many white males with prior signs of mental illness initiated a mass shooting after 2000?
 
 ```{r}
+#Filter only cases with white males that had mental issues
+White_priormentalillnes <- mass_shootings %>% 
+  filter(race== "White" & male=="TRUE" & prior_mental_illness=="Yes" & year >=2000)
+
+#Count and show the number of rows
+count <- nrow(White_priormentalillnes)
+print (count)
+
+#23 white males with signg of mental illness after 2000
 
 ```
 
 -   Which month of the year has the most mass shootings? Generate a bar chart sorted in chronological (natural) order (Jan-Feb-Mar- etc) to provide evidence of your answer.
 
 ```{r}
+#Create a new table with year, month and number of shooting
+shoot_chrono <- mass_shootings %>%
+  group_by(month) %>%
+  summarize(shootings = n())
+ 
+#Create a vector in chronological order
+month_names <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
+#Create a variable that match the vector with the month name
+shoot_chrono$month_number <- match(shoot_chrono$month, month_names)
+
+#Bar graph. The x label has a 5 year gap per label to make it less crowded. 
+ggplot(shoot_chrono, aes(x = reorder(month, +month_number), y = shootings)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  labs(x = "Month", y = "Number of Shootings") +
+  theme_minimal() 
+
+#Feb is the month with the highest number of shootings
 ```
 
 -   How does the distribution of mass shooting fatalities differ between White and Black shooters? What about White and Latino shooters?
 
 ```{r}
+# Filter the data for White and Black shooters
+white_black_data <- mass_shootings %>%
+  filter(race %in% c("White", "Black"))
 
+# Group the data by shooter race and calculate the total fatalities
+victims_summary <- white_black_data %>%
+  group_by(race) %>%
+  summarize(total_victims = sum(total_victims))
+
+# Create a bar chart to compare the distribution of fatalities
+ggplot(victims_summary, aes(x = race, y = total_victims)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Shooter Race", y = "Total Fatalities", title = "Distribution of Mass Shooting Fatalities") +
+  theme_minimal()
+
+
+# Filter the data for White, Black, and Latino shooters
+filtered_data <- mass_shootings %>%
+  filter(race %in% c("White", "Black", "Latino"))
+
+# Group the data by shooter race and number of victims, and calculate the incident count
+incident_counts <- filtered_data %>%
+  group_by(race, total_victims) %>%
+  summarize(incident_count = n())
+
+# Create a bar chart to compare the frequency of incidents by number of victims
+ggplot(filtered_data, aes(x = total_victims, fill = race)) +
+  geom_density(alpha = 0.5) +
+  labs(x = "Number of Victims", y = "Density", title = "Distribution of Mass Shooting Incidents by Number of Victims") +
+  scale_fill_manual(values = c("White" = "blue", "Black" = "red", "Latino" = "green")) +
+  theme_minimal()+ xlim(0, 100)
+
+#Incidents initiated by latinos are more concentrate to its median compared to the other races. Incidents initiated by white or black people are more concentrate to values lower than the median but have less concentration compared to the latinos. 
 ```
 
 ### Very open-ended
@@ -135,13 +194,33 @@ Address the following questions. Generate appropriate figures/tables to support 
 -   Are mass shootings with shooters suffering from mental illness different from mass shootings with no signs of mental illness in the shooter?
 
 ```{r}
+# Filter the data for mass shootings with and without signs of mental illness
+mental_illness_data <- mass_shootings %>%
+  filter(prior_mental_illness == "Yes")
+no_mental_illness_data <- mass_shootings %>%
+  filter(prior_mental_illness == "No")
+
+# Calculate the total number of shootings for each group
+total_mental_illness_shootings <- nrow(mental_illness_data)
+total_no_mental_illness_shootings <- nrow(no_mental_illness_data)
+
+# Display the total number of shootings for each group
+cat("Mass shootings with shooters suffering from mental illness:", total_mental_illness_shootings, "\n")
+cat("Mass shootings with no signs of mental illness in the shooter:", total_no_mental_illness_shootings, "\n")
+
+#While mass shootings with no signs of mental illness in the shooter are 17, the total number of mass shootings with signs of mental illness in the shooter is 62. 
 
 ```
 
 -   Assess the relationship between mental illness and total victims, mental illness and location type, and the intersection of all three variables.
 
 ```{r}
+ggplot(mass_shootings, aes(x = location_type, y = total_victims, color = prior_mental_illness)) +
+  geom_point() +
+  labs(x = "Location Type", y = "Total Victims", color = "Prior Mental Illness")+     coord_cartesian(ylim = c(0, 110))
 
+
+#While there is no clear relationship between the three var, two conclusion can be drawn using the following scatterplot. 1) Shooters with no prior mental illness signals only started incidents in schools, workplaces and others. 2) Airport, military and religous sites show the least amount of incidents. 
 ```
 
 Make sure to provide a couple of sentences of written interpretation of your tables/figures. Graphs and tables alone will not be sufficient to answer this question.
